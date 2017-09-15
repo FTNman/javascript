@@ -19,7 +19,10 @@ var CITIES = {
 		"Chicago O'Hare International Airport" : "41.9798,-87.882",
 		"Seattle,WA" : "47.6062,-122.3321",
 		"Houston,TX": "29.7633,-95.3633",
-		"New Orleans,LA": "29.9546,-90.0751"
+		"New Orleans,LA": "29.9546,-90.0751",
+		"Tampa,FL": "27.9475,-82.4584",
+		"Tallahassee,FL": "30.4383,-84.2807",
+		"Atlanta,GA": "33.7490,-84.3880"
 	},
 	getLatLon: function(city) {return this.database[city]},
 	initSelList: function(target) {
@@ -32,6 +35,7 @@ var CITIES = {
 	}
 }
 var NWSFORECAST = {
+	baseUrl: 'https://api.weather.gov/points/',
  	metaData: {}, //Metadata for this point goes here
 	forecast: {}, //7-day forecast goes here
 	hourly: {}, //Hourly Forecast goes here
@@ -47,71 +51,39 @@ var NWSFORECAST = {
 			$.getJSON(url,
 				function(d, s, h){NWSFORECAST[cache] = d; callback(d, s, h)}
 				)
-			.fail(function(h,s,e){alert('Failed in NWSFORECAST.getForecast for url: ' + url); NWSFORECAST.errorResponse = h; this.nwsAPIFail(h,s,e);});
+			.fail(function(h,s,e){alert('Failed in NWSFORECAST.getForecast for url: ' + url); NWSFORECAST.errorResponse = h; NWSFORECAST.nwsAPIFail(h,s,e, callback);});
 		}
 	},
-	nwsAPIFail: function(header, status, error, callback) {
-		console.log(header.responseText);
-		var aText = 'API Failed -- ' + header.status + ', ' + header.statusText + '\n' + header.responseJSON.detail;
-		alert(aText);
-		callback(header, status, error);
-},
-	loadMeta: function(city) {
-		if (!(cities[city])) {
-			alert('[' + city + '] IS NOT A KNOWN CITY.  TRY AGAIN');
+	getFcst: function(url, callback, cache) { // Load data from api.weather.com.  Uses raw $.ajax
+		if (!(url)) {
+			alert('getFcst-No URL RECEIVED.  TRY AGAIN');
 		}
 		else {
-			$.getJSON('https://api.weather.gov/points/' + cities[city],
-				function(d, s, h){NWSFORECAST.metaData = d; initFcsts(d, s, h);}
-				)
-			.fail(function( jqxhr, textStatus, error ) {
-					var err = textStatus + ", " + error + jqxhr.textResponse;
-					alert( "loadMeta Request Failed: " + err );
+			$.ajax({
+				url: url,
+				beforeSend: function(rqst,settings){
+					console.log(['beforeSend',rqst,settings]);
+					rqst.setRequestHeader( 'Accept', 'application/geo+json' )
+				},
+				//dataType: 'application/ld+json','application/geo+json
+				success: function(d, s, h){NWSFORECAST[cache] = d; callback(d, s, h)},
+				error: function(h,s,e){alert('Failed in NWSFORECAST.getFcst for url: ' + url); NWSFORECAST.errorResponse = h; NWSFORECAST.nwsAPIFail(h,s,e, callback);}
 			});
 		}
 	},
-	loadForecast: function(url, callback) {
-		if (!(url)) {
-			alert('loadForecast-No URL RECEIVED.  TRY AGAIN');
-		}
-		else {
-			$.getJSON(url,
-				function(d, s, h){NWSFORECAST.forecast = d; callback(d, s, h)}
-				)
-			.fail(function(h,s,e){alert('Failed in NWSFORECAST.loadForecast'); NWSFORECAST.errorResponse = h; nwsAPIFail(h,s,e);});
-		}
+	nwsAPIFail: function(header, status, error, callback) {
+		console.log([header, status, error]);
+		var aText = 'API Failed -- ' + header.status + ', ' + header.statusText + '\n'; // + header.responseJSON.detail;
+		alert(aText);
+		callback(header, status, error);
 	},
-	loadHourly: function(url, callback) {
-		if (!(url)) {
-			alert('loadHourly-No URL RECEIVED.  TRY AGAIN');
-		}
-		else {
-			$.getJSON(url,
-				function(d, s, h){NWSFORECAST.hourly = d; callback(d, s, h)}
-				)
-			.fail(function(h,s,e){alert('Failed in NWSFORECAST.loadHourly'); NWSFORECAST.errorResponse = h; nwsAPIFail(h,s,e,callback)});
-		}
+	m2mi: function(m) {
+		return m * 100 / 2.54 / 12 /5280;
 	},
-	loadObservationStations: function(url, callback) {
-		if (!(url)) {
-			alert('loadObservationStations-No URL RECEIVED.  TRY AGAIN');
-		}
-		else {
-			$.getJSON(url,
-				function(d, s, h){NWSFORECAST.observationStations = d; callback(d, s, h)}
-				)
-			.fail(function(h,s,e){alert('Failed in NWSFORECAST.loadObservationStations'); NWSFORECAST.errorResponse = h; nwsAPIFail(h,s,e);});
-		}
-	},
-	loadGrid: function(url, callback) {
-		if (!(url)) {
-			alert('loadGrid-No URL RECEIVED.  TRY AGAIN');
-		}
-		else {
-			$.getJSON(url,
-				function(d, s, h){NWSFORECAST.grid = d; callback(d, s, h)}
-				)
-			.fail(function(h,s,e){alert('Failed in NWSFORECAST.loadGrid'); NWSFORECAST.errorResponse = h; nwsAPIFail(h,s,e)});
-		}
+	deg2compass: function(brng) {
+		var crose = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'], ndx;
+		// (deprecated) var ndx = Math.floor(((11.25+brng) % 360) / 22.5);
+		var ndx = Math.round(brng / 22.5) % 16;
+		return crose[ndx];
 	}
 }
