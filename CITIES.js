@@ -62,7 +62,7 @@ var NWSFORECAST = {
 			$.ajax({
 				url: url,
 				beforeSend: function(rqst,settings){
-					console.log(['beforeSend',rqst,settings]);
+					//console.log(['beforeSend',rqst,settings]);
 					rqst.setRequestHeader( 'Accept', 'application/geo+json' )
 				},
 				//dataType: 'application/ld+json','application/geo+json
