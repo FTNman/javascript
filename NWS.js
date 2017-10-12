@@ -1,27 +1,57 @@
 /*
  * NWS.js
- * A library subborting the new (as of ~2017) api.weather.gov
+ * A library supporting the new (as of ~2017) api.weather.gov
  */
 function NWS(point) {
 	this.point = point;
 	this.baseUrl = 'https://api.weather.gov/points/' + this.points;
 	this.metaData = null;
+	this.forecast = null;
+	this.hourlyfcst = null;
+	this.grid = null;
 	this.observationStas = null;
+	this.currobs = null;
 }
-NWS.prototype.CurrentObservation = function(point) {
-	if (arguments.length == 0) point = this.point;
-	if (!this.observationStas.observationStations) {
-		$.getJSON(this.metaData.properties.observationStations)
-		.done(function(data, status, xhdr) { this.observationStas = data; })
-		.fail(function(h,s,e){this.apiFail(h,s,e,this.metaData.properties.observationStations)});
-	};
-	var currObsUrl = this.observationStas.observationStations[0] + '/observations/current';
-	$.getJSON(currObsUrl).done(this.processObs).done(function(h,s,e){apiFail(h,s,e,currObsUrl);});
+NWS.prototype.getMetaData = function() {
+	if (!this.point) {
+		alert('No latitude,longitude specified.  Set the "point" property before calling getMetaData().');
+	}
+	else {
+		$.getJSON(this.basrUrl)
+		.done(function(d,s,e){this.metaData = d;console.log('stored metaData';})
+		.fail(function(h,s,e){apiFail(h,s,e,this.baseUrl);});
+	}
+}
+NWS.prototype.getObservationStas = function() {
+	if (!this.metaData) this.getMetaData();
+	this.getNWSData(this.metaData.properties.observationStations, 'observationStas');
+}
+NWS.prototype.getNWSData = function(url, propName) {
+	var errMsg = 'Both parameters required in call: getNWSData(url, propName).';
+	if (!this.point) {
+		alert('No latitude,longitude specified.  Set the "point" property before calling getNWSData(url, propName).');
+	} else if (!url) {
+		alert('No URL specified.  ' + errMsg);
+	} else if (!propName) {
+		alert('No property name specified.  ' + errMsg);
+	}
+	else {
+		$.getJSON(url)
+		.done(function(d,s,e){this[propName] = d;console.log('stored ' + propName;})
+		.fail(function(h,s,e){apiFail(h,s,e,url);});
+	}
+}
+NWS.prototype.getCurrObs = function() {
+	var currObsUrl;
+	if (!this.metaData) this.getMetaData();
+	if (!this.observationStas) this.getObservationStas();
+	currObsUrl = this.observationStas.properties.observationStations[0];
+	getNWSData(currObsUrl, 'currobs');
 }
 NWS.prototype.apiFail(hdr, status, error, url) {
 	alert('apiFail for URL: ' + url + '\nStatus: ' + status + ' Error: ' + error);
 }
-NWS.prototype.processObs(data, status, xhdr) {
+NWS.prototype.prcsCurrObs(data, status, xhdr) {
 	var html = '';
 	html += TAG.div({
 		class: 'ccHead',
